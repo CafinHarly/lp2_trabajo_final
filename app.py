@@ -126,3 +126,103 @@ def buscar_filmaffinity(keyword):
     except Exception as e:
         st.error(f"Ocurrió un error grave: {e}")
         return pd.DataFrame()
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
+    st.info(f"🕸️ Scrapeando: {url_base} ... esto puede tardar un poco más.")
+    
+    response = requests.get(url_base, headers=headers)
+    
+    if response.status_code != 200:
+        st.error("Error al conectar con FilmAffinity")
+        return pd.DataFrame()
+
+    # 2. Parsear el HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    registros = []
+    
+    # En FilmAffinity, cada resultado suele estar en un div con clase 'se-it' o 'movie-card'
+    # Buscamos los items de la lista de resultados
+    resultados = soup.find_all('div', class_='se-it')
+    
+    # Limitamos a 10 para no saturar, ya que el scraping es lento
+    for item in resultados[:10]: 
+        try:
+            # Título
+            titulo_tag = item.find('div', class_='mc-title')
+            titulo = titulo_tag.get_text(strip=True) if titulo_tag else "Sin título"
+            
+            # Año
+            anio_tag = item.find('div', class_='ye-w')
+            anio = anio_tag.get_text(strip=True) if anio_tag else "-"
+            
+            # Poster (Imagen)
+            img_tag = item.find('img')
+            poster_url = img_tag['src'] if img_tag else None
+            
+            # Nota: El Rating a veces no sale en la búsqueda rápida de FA,
+            # pero intentamos sacarlo si está visible en la tarjeta
+            rating_tag = item.find('div', class_='avgrat-box')
+            rating = rating_tag.get_text(strip=True) if rating_tag else "N/A"
+
+            registros.append({
+                "Fuente": "FilmAffinity",
+                "Título": titulo,
+                "Año": anio,
+                "Rating": rating,
+                "Poster": poster_url
+            })
+            
+        except Exception as e:
+            continue # Si falla una peli, pasamos a la siguiente
+
+    return pd.DataFrame(registros)
+
+# ==========================================
+# 🎨 INTERFAZ GRÁFICA (FRONTEND)
+# ==========================================
+
+st.title("🎬 Buscador Universal de Películas")
+
+# 1. SELECTOR DE FUENTE (Lo nuevo que pediste)
+fuente = st.sidebar.radio(
+    "📍 ¿De dónde extraemos los datos?",
+    ("OMDb API (Rápido)", "FilmAffinity (Web Scraping)")
+)
+
+st.sidebar.markdown("---")
+st.sidebar.write("Nota: El scraping es más lento porque analiza el HTML real de la página.")
+
+# 2. INPUT DE BÚSQUEDA
+keyword = st.text_input("Escribe el nombre de la película:", placeholder="Ej. Matrix")
+
+if st.button("Buscar"):
+    if not keyword:
+        st.warning("Por favor escribe algo.")
+    else:
+        df_resultados = pd.DataFrame()
+        
+        # DECISIÓN: ¿Qué función ejecuto?
+        if "OMDb" in fuente:
+            with st.spinner('Consultando base de datos oficial...'):
+                df_resultados = buscar_omdb(keyword)
+        else:
+            with st.spinner('Scrapeando FilmAffinity en tiempo real...'):
+                df_resultados = buscar_filmaffinity(keyword)
+
+        # MOSTRAR RESULTADOS
+        if not df_resultados.empty:
+            st.success(f"Encontradas {len(df_resultados)} películas en {fuente}")
+            
+            st.dataframe(
+                df_resultados,
+                column_config={
+                    "Poster": st.column_config.ImageColumn("Póster", width="small")
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+        else:
+            st.error("No se encontraron resultados. Intenta otra palabra.")
