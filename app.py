@@ -13,8 +13,56 @@ API_KEY_OMDB = "69d810ef"
 # 🧠 LÓGICA OMDb (Igual que antes)
 # ==========================================
 def buscar_omdb(keyword):
-    # ... (Tu código de OMDb se mantiene igual) ...
-    return pd.DataFrame() # Simplificado para el ejemplo
+    imdb_ids = []
+    url = "https://www.omdbapi.com/"
+    
+    # Barra de progreso
+    progress = st.progress(0)
+    status = st.empty()
+    
+    # Buscamos en 2 páginas
+    for page in range(1, 3):
+        status.text(f"OMDb API: Buscando página {page}...")
+        params = {"s": keyword, "type": "movie", "page": page, "apikey": API_KEY_OMDB}
+        
+        try:
+            response = requests.get(url, params=params)
+            data = response.json()
+            
+            if data.get("Response") == "True":
+                for item in data["Search"]:
+                    imdb_ids.append(item["imdbID"])
+            else:
+                break
+        except Exception as e:
+            st.error(f"Error conectando con OMDb: {e}")
+            break
+            
+        progress.progress(page * 50)
+    
+    # Obtenemos detalles
+    registros = []
+    total = len(imdb_ids)
+    
+    if total > 0:
+        for i, imdb_id in enumerate(imdb_ids):
+            status.text(f"OMDb: Descargando detalles {i+1}/{total}...")
+            params_detail = {"i": imdb_id, "apikey": API_KEY_OMDB}
+            resp = requests.get(url, params=params_detail).json()
+            
+            if resp.get("Response") == "True":
+                registros.append({
+                    "Fuente": "OMDb",
+                    "Título": resp.get("Title"),
+                    "Año": resp.get("Year"),
+                    "Rating": resp.get("imdbRating"),
+                    "Poster": resp.get("Poster")
+                })
+    
+    progress.empty()
+    status.empty()
+    return pd.DataFrame(registros)
+
 
 # ==========================================
 # 🕷️ LÓGICA FILMAFFINITY (CORREGIDA)
