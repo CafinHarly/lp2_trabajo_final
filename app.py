@@ -1,16 +1,17 @@
 import streamlit as st
 import pandas as pd
-import cloudscraper # Necesario: pip install cloudscraper
+import requests  # Faltaba importar requests explícitamente
+import cloudscraper 
 from bs4 import BeautifulSoup
 import time
 import random
 
 # --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Buscador PRO", layout="wide")
+st.set_page_config(page_title="Buscador PRO", layout="wide", page_icon="🎬")
 API_KEY_OMDB = "69d810ef" 
 
 # ==========================================
-# 🧠 LÓGICA OMDb (Igual que antes)
+# 🧠 LÓGICA 1: OMDb API (Oficial)
 # ==========================================
 def buscar_omdb(keyword):
     imdb_ids = []
@@ -48,16 +49,19 @@ def buscar_omdb(keyword):
         for i, imdb_id in enumerate(imdb_ids):
             status.text(f"OMDb: Descargando detalles {i+1}/{total}...")
             params_detail = {"i": imdb_id, "apikey": API_KEY_OMDB}
-            resp = requests.get(url, params=params_detail).json()
-            
-            if resp.get("Response") == "True":
-                registros.append({
-                    "Fuente": "OMDb",
-                    "Título": resp.get("Title"),
-                    "Año": resp.get("Year"),
-                    "Rating": resp.get("imdbRating"),
-                    "Poster": resp.get("Poster")
-                })
+            try:
+                resp = requests.get(url, params=params_detail).json()
+                
+                if resp.get("Response") == "True":
+                    registros.append({
+                        "Fuente": "OMDb",
+                        "Título": resp.get("Title"),
+                        "Año": resp.get("Year"),
+                        "Rating": resp.get("imdbRating"),
+                        "Poster": resp.get("Poster")
+                    })
+            except:
+                continue
     
     progress.empty()
     status.empty()
@@ -65,11 +69,10 @@ def buscar_omdb(keyword):
 
 
 # ==========================================
-# 🕷️ LÓGICA FILMAFFINITY (CORREGIDA)
+# 🕷️ LÓGICA 2: FilmAffinity (Anti-Bloqueo)
 # ==========================================
 def buscar_filmaffinity(keyword):
-    # CONFIGURACIÓN "ANTIBOT" AVANZADA
-    # Simulamos ser un Chrome real en Windows para pasar el filtro
+    # Simulamos ser un navegador real
     scraper = cloudscraper.create_scraper(
         browser={
             'browser': 'chrome',
@@ -78,74 +81,48 @@ def buscar_filmaffinity(keyword):
         }
     )
     
-    url_base = "https://www.filmaffinity.com/pe/search.php" # Usamos /pe/ ya que estás en Perú
+    url_base = "https://www.filmaffinity.com/pe/search.php"
     parametros = {'stext': keyword}
     
     status = st.empty()
-    status.info(f"🕸️ Conectando a FilmAffinity (Modo Navegador Real)...")
+    status.info(f"🕸️ Conectando a FilmAffinity...")
     
     try:
-        # Añadimos un pequeño tiempo de espera aleatorio para parecer humanos
-        time.sleep(random.uniform(0.5, 1.5))
-        
+        time.sleep(random.uniform(0.5, 1.5)) # Pausa humana
         response = scraper.get(url_base, params=parametros)
         
-        # VERIFICACIÓN DE BLOQUEO
-        if response.status_code == 403:
-            status.error("⛔ FilmAffinity detectó el script y bloqueó la conexión (Error 403). Intenta de nuevo en unos minutos.")
-            return pd.DataFrame()
-            
         if response.status_code != 200:
             status.error(f"Error de conexión: {response.status_code}")
             return pd.DataFrame()
 
-        # PARSEO (LECTURA) DEL HTML
         soup = BeautifulSoup(response.text, 'html.parser')
         registros = []
         
-        # Buscamos las tarjetas de resultados (Clase estándar 'se-it')
         resultados = soup.find_all('div', class_='se-it')
         
-        # Si no hay lista, verificamos si redirigió a una película única
         if not resultados:
+            # Lógica de redirección directa
             if soup.find('h1', {'id': 'main-title'}):
-                # Caso especial: Búsqueda exacta redirige a la ficha
-                titulo = soup.find('h1', {'id': 'main-title'}).get_text(strip=True)
-                registros.append({
-                    "Fuente": "FilmAffinity",
-                    "Título": titulo,
-                    "Año": "Ficha Directa",
-                    "Rating": "Ver Link",
-                    "Poster": None
-                })
-                status.success("¡Redirección directa encontrada!")
+                t = soup.find('h1', {'id': 'main-title'}).get_text(strip=True)
+                registros.append({"Fuente": "FilmAffinity", "Título": t, "Año": "Ficha", "Rating": "-", "Poster": None})
                 return pd.DataFrame(registros)
             else:
-                status.warning(f"Conexión exitosa, pero no vi películas para '{keyword}'. (El HTML llegó vacío de resultados)")
+                status.warning("No se encontraron resultados.")
                 return pd.DataFrame()
         
         status.text(f"Procesando {len(resultados)} resultados...")
         
         for item in resultados[:10]: 
             try:
-                # Título
-                t_tag = item.find('div', class_='mc-title')
-                titulo = t_tag.get_text(strip=True) if t_tag else "Sin título"
+                titulo = item.find('div', class_='mc-title').get_text(strip=True)
+                anio = item.find('div', class_='ye-w').get_text(strip=True) if item.find('div', class_='ye-w') else "-"
                 
-                # Año
-                y_tag = item.find('div', class_='ye-w')
-                anio = y_tag.get_text(strip=True) if y_tag else "-"
-                
-                # Poster
                 img_tag = item.find('img')
                 poster = img_tag['src'] if img_tag else None
-                # A veces la imagen está en 'data-src' por carga diferida
                 if img_tag and 'data-src' in img_tag.attrs:
                     poster = img_tag['data-src']
 
-                # Rating
-                r_tag = item.find('div', class_='avgrat-box')
-                rating = r_tag.get_text(strip=True) if r_tag else "-"
+                rating = item.find('div', class_='avgrat-box').get_text(strip=True) if item.find('div', class_='avgrat-box') else "-"
 
                 registros.append({
                     "Fuente": "FilmAffinity",
@@ -154,7 +131,7 @@ def buscar_filmaffinity(keyword):
                     "Rating": rating,
                     "Poster": poster
                 })
-            except Exception:
+            except:
                 continue
 
         status.empty()
@@ -165,18 +142,40 @@ def buscar_filmaffinity(keyword):
         return pd.DataFrame()
 
 # ==========================================
-# INTERFAZ (Igual que antes)
+# 🎨 INTERFAZ PRINCIPAL
 # ==========================================
 st.title("🎬 Buscador Universal")
-fuente = st.sidebar.radio("Fuente:", ("OMDb API", "FilmAffinity"))
-keyword = st.text_input("Película:")
 
-if st.button("Buscar"):
-    if fuente == "OMDb API":
-        st.warning("Función OMDb no incluida en este bloque (usa tu código anterior)")
+with st.sidebar:
+    st.header("Configuración")
+    fuente = st.radio("Fuente de datos:", ("OMDb API", "FilmAffinity"))
+
+keyword = st.text_input("Escribe una película:", placeholder="Ej. Gladiador")
+
+if st.button("Buscar Película"):
+    if not keyword:
+        st.warning("Escribe algo primero.")
     else:
-        df = buscar_filmaffinity(keyword)
-        if not df.empty:
-            st.dataframe(df, column_config={"Poster": st.column_config.ImageColumn("Póster")})
+        df = pd.DataFrame()
+        
+        # AQUÍ ESTABA EL ERROR ANTES: AHORA LLAMAMOS A LAS FUNCIONES CORRECTAS
+        if fuente == "OMDb API":
+            with st.spinner("Consultando OMDb..."):
+                df = buscar_omdb(keyword)
         else:
-            st.error("Sin resultados.")
+            with st.spinner("Scrapeando FilmAffinity..."):
+                df = buscar_filmaffinity(keyword)
+
+        # Mostrar resultados
+        if not df.empty:
+            st.success(f"Encontradas {len(df)} películas.")
+            st.dataframe(
+                df,
+                column_config={
+                    "Poster": st.column_config.ImageColumn("Póster", width="small")
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.error("No se encontraron resultados.")
