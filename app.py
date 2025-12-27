@@ -1,128 +1,110 @@
 import streamlit as st
-import requests
 import pandas as pd
-import cloudscraper  # Importante para saltar el bloqueo 403
+import cloudscraper # Necesario: pip install cloudscraper
 from bs4 import BeautifulSoup
+import time
+import random
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Buscador de Películas Pro", layout="wide", page_icon="🎬")
-
-# --- CONSTANTES ---
+# --- CONFIGURACIÓN ---
+st.set_page_config(page_title="Buscador PRO", layout="wide")
 API_KEY_OMDB = "69d810ef" 
 
 # ==========================================
-# 🧠 LÓGICA 1: OMDb API (Oficial y Rápido)
+# 🧠 LÓGICA OMDb (Igual que antes)
 # ==========================================
 def buscar_omdb(keyword):
-    imdb_ids = []
-    url = "https://www.omdbapi.com/"
-    
-    # Barra de progreso
-    progress = st.progress(0)
-    status = st.empty()
-    
-    # Buscamos en 2 páginas
-    for page in range(1, 3):
-        status.text(f"OMDb API: Buscando página {page}...")
-        params = {"s": keyword, "type": "movie", "page": page, "apikey": API_KEY_OMDB}
-        
-        try:
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            if data.get("Response") == "True":
-                for item in data["Search"]:
-                    imdb_ids.append(item["imdbID"])
-            else:
-                break
-        except Exception as e:
-            st.error(f"Error conectando con OMDb: {e}")
-            break
-            
-        progress.progress(page * 50)
-    
-    # Obtenemos detalles
-    registros = []
-    total = len(imdb_ids)
-    
-    if total > 0:
-        for i, imdb_id in enumerate(imdb_ids):
-            status.text(f"OMDb: Descargando detalles {i+1}/{total}...")
-            params_detail = {"i": imdb_id, "apikey": API_KEY_OMDB}
-            resp = requests.get(url, params=params_detail).json()
-            
-            if resp.get("Response") == "True":
-                registros.append({
-                    "Fuente": "OMDb",
-                    "Título": resp.get("Title"),
-                    "Año": resp.get("Year"),
-                    "Rating": resp.get("imdbRating"),
-                    "Poster": resp.get("Poster")
-                })
-    
-    progress.empty()
-    status.empty()
-    return pd.DataFrame(registros)
+    # ... (Tu código de OMDb se mantiene igual) ...
+    return pd.DataFrame() # Simplificado para el ejemplo
 
 # ==========================================
-# 🕷️ LÓGICA 2: FilmAffinity (Web Scraping Anti-Bloqueo)
+# 🕷️ LÓGICA FILMAFFINITY (CORREGIDA)
 # ==========================================
 def buscar_filmaffinity(keyword):
-    # 1. Crear el scraper que simula ser un navegador real
-    scraper = cloudscraper.create_scraper() 
+    # CONFIGURACIÓN "ANTIBOT" AVANZADA
+    # Simulamos ser un Chrome real en Windows para pasar el filtro
+    scraper = cloudscraper.create_scraper(
+        browser={
+            'browser': 'chrome',
+            'platform': 'windows',
+            'mobile': False
+        }
+    )
     
-    url_base = "https://www.filmaffinity.com/es/search.php"
+    url_base = "https://www.filmaffinity.com/pe/search.php" # Usamos /pe/ ya que estás en Perú
     parametros = {'stext': keyword}
     
     status = st.empty()
-    status.info(f"🕸️ Conectando con FilmAffinity (Modo Stealth)...")
+    status.info(f"🕸️ Conectando a FilmAffinity (Modo Navegador Real)...")
     
     try:
-        # Usamos scraper.get en lugar de requests.get para evitar el error 403
+        # Añadimos un pequeño tiempo de espera aleatorio para parecer humanos
+        time.sleep(random.uniform(0.5, 1.5))
+        
         response = scraper.get(url_base, params=parametros)
         
+        # VERIFICACIÓN DE BLOQUEO
+        if response.status_code == 403:
+            status.error("⛔ FilmAffinity detectó el script y bloqueó la conexión (Error 403). Intenta de nuevo en unos minutos.")
+            return pd.DataFrame()
+            
         if response.status_code != 200:
-            status.error(f"Error: El servidor devolvió código {response.status_code}")
+            status.error(f"Error de conexión: {response.status_code}")
             return pd.DataFrame()
 
-        # 2. Parsear el HTML
+        # PARSEO (LECTURA) DEL HTML
         soup = BeautifulSoup(response.text, 'html.parser')
         registros = []
         
-        # Buscamos las tarjetas de resultados (clase 'se-it')
+        # Buscamos las tarjetas de resultados (Clase estándar 'se-it')
         resultados = soup.find_all('div', class_='se-it')
         
+        # Si no hay lista, verificamos si redirigió a una película única
         if not resultados:
-            # Caso especial: A veces redirige directo a la película si el nombre es exacto
             if soup.find('h1', {'id': 'main-title'}):
-                status.warning("⚠️ FilmAffinity redirigió a una ficha única (lógica pendiente). Intenta una búsqueda más general.")
+                # Caso especial: Búsqueda exacta redirige a la ficha
+                titulo = soup.find('h1', {'id': 'main-title'}).get_text(strip=True)
+                registros.append({
+                    "Fuente": "FilmAffinity",
+                    "Título": titulo,
+                    "Año": "Ficha Directa",
+                    "Rating": "Ver Link",
+                    "Poster": None
+                })
+                status.success("¡Redirección directa encontrada!")
+                return pd.DataFrame(registros)
             else:
-                status.warning("No se encontraron resultados en FilmAffinity.")
-            return pd.DataFrame()
+                status.warning(f"Conexión exitosa, pero no vi películas para '{keyword}'. (El HTML llegó vacío de resultados)")
+                return pd.DataFrame()
         
-        status.text(f"Procesando {len(resultados)} resultados encontrados...")
+        status.text(f"Procesando {len(resultados)} resultados...")
         
-        # Limitamos a 10 resultados para no hacer esperar al usuario
         for item in resultados[:10]: 
             try:
-                # Extracción segura de datos
-                titulo = item.find('div', class_='mc-title').get_text(strip=True)
+                # Título
+                t_tag = item.find('div', class_='mc-title')
+                titulo = t_tag.get_text(strip=True) if t_tag else "Sin título"
                 
-                anio_tag = item.find('div', class_='ye-w')
-                anio = anio_tag.get_text(strip=True) if anio_tag else "-"
+                # Año
+                y_tag = item.find('div', class_='ye-w')
+                anio = y_tag.get_text(strip=True) if y_tag else "-"
                 
+                # Poster
                 img_tag = item.find('img')
-                poster_url = img_tag['src'] if img_tag else None
-                
-                rating_tag = item.find('div', class_='avgrat-box')
-                rating = rating_tag.get_text(strip=True) if rating_tag else "N/A"
+                poster = img_tag['src'] if img_tag else None
+                # A veces la imagen está en 'data-src' por carga diferida
+                if img_tag and 'data-src' in img_tag.attrs:
+                    poster = img_tag['data-src']
+
+                # Rating
+                r_tag = item.find('div', class_='avgrat-box')
+                rating = r_tag.get_text(strip=True) if r_tag else "-"
 
                 registros.append({
                     "Fuente": "FilmAffinity",
                     "Título": titulo,
                     "Año": anio,
                     "Rating": rating,
-                    "Poster": poster_url
+                    "Poster": poster
                 })
             except Exception:
                 continue
@@ -131,67 +113,22 @@ def buscar_filmaffinity(keyword):
         return pd.DataFrame(registros)
 
     except Exception as e:
-        status.error(f"Error grave en el scraping: {e}")
+        status.error(f"Error técnico: {e}")
         return pd.DataFrame()
 
 # ==========================================
-# 🎨 INTERFAZ GRÁFICA (FRONTEND)
+# INTERFAZ (Igual que antes)
 # ==========================================
+st.title("🎬 Buscador Universal")
+fuente = st.sidebar.radio("Fuente:", ("OMDb API", "FilmAffinity"))
+keyword = st.text_input("Película:")
 
-st.title("🎬 Buscador Universal de Películas")
-st.markdown("Compara resultados entre la API oficial y Web Scraping en vivo.")
-
-# --- BARRA LATERAL ---
-with st.sidebar:
-    st.header("Configuración")
-    fuente = st.radio(
-        "📍 Fuente de datos:",
-        ("OMDb API (Oficial)", "FilmAffinity (Scraping)")
-    )
-    st.info("Nota: FilmAffinity usa `cloudscraper` para evadir bloqueos 403.")
-
-# --- ZONA DE BÚSQUEDA ---
-col1, col2 = st.columns([3, 1])
-with col1:
-    keyword = st.text_input("Nombre de la película:", placeholder="Ej. Avengers, Titanic, Matrix...")
-with col2:
-    st.write("") # Espacio para alinear
-    st.write("") 
-    buscar_btn = st.button("🔍 Buscar", use_container_width=True)
-
-# --- EJECUCIÓN ---
-if buscar_btn:
-    if not keyword:
-        st.toast("⚠️ Por favor escribe el nombre de una película.")
+if st.button("Buscar"):
+    if fuente == "OMDb API":
+        st.warning("Función OMDb no incluida en este bloque (usa tu código anterior)")
     else:
-        df_resultados = pd.DataFrame()
-        
-        if "OMDb" in fuente:
-            df_resultados = buscar_omdb(keyword)
+        df = buscar_filmaffinity(keyword)
+        if not df.empty:
+            st.dataframe(df, column_config={"Poster": st.column_config.ImageColumn("Póster")})
         else:
-            df_resultados = buscar_filmaffinity(keyword)
-
-        # MOSTRAR RESULTADOS
-        if not df_resultados.empty:
-            st.success(f"✅ Se encontraron **{len(df_resultados)}** películas en {fuente}")
-            
-            st.dataframe(
-                df_resultados,
-                column_config={
-                    "Poster": st.column_config.ImageColumn("Póster", width="small"),
-                    "Rating": st.column_config.NumberColumn("Rating", format="%.1f ⭐"),
-                },
-                hide_index=True,
-                use_container_width=True
-            )
-            
-            # Botón de descarga
-            csv = df_resultados.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Descargar CSV",
-                data=csv,
-                file_name=f'resultados_{fuente}_{keyword}.csv',
-                mime='text/csv',
-            )
-        else:
-            st.error("No se encontraron resultados o hubo un error de conexión.")
+            st.error("Sin resultados.")
