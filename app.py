@@ -2,113 +2,164 @@ import streamlit as st
 import requests
 import pandas as pd
 import time
+from bs4 import BeautifulSoup # Importante para el scraping
 
 # --- CONFIGURACIÓN ---
-API_KEY = "69d810ef"  # Nota: Idealmente esto no debe ser público, pero sirve para probar
-BASE_URL = "https://www.omdbapi.com/"
+st.set_page_config(page_title="Buscador Multi-Fuente", layout="wide")
+API_KEY_OMDB = "69d810ef" 
 
-# --- TÍTULO DE LA PÁGINA ---
-st.set_page_config(page_title="Buscador de Películas", layout="wide")
-st.title("🎬 Buscador de Películas (OMDb API)")
-st.markdown("Escribe una palabra clave para buscar películas y ver sus detalles.")
-
-# --- FUNCIONES (Lógica de tu amigo) ---
-def buscar_peliculas(keyword, paginas=3):
+# ==========================================
+# 🧠 LÓGICA 1: OMDb API (Tu código anterior)
+# ==========================================
+def buscar_omdb(keyword):
+    # Buscamos primero los IDs
     imdb_ids = []
-    # Barra de progreso en la interfaz
-    progress_bar = st.progress(0)
+    url = "https://www.omdbapi.com/"
     
-    for page in range(1, paginas + 1):
-        params = {
-            "s": keyword,
-            "type": "movie",
-            "page": page,
-            "apikey": API_KEY
-        }
-        response = requests.get(BASE_URL, params=params)
+    # Barra de progreso simulada
+    progress = st.progress(0)
+    status = st.empty()
+    
+    # Buscamos 2 páginas para que sea rápido
+    for page in range(1, 3):
+        status.text(f"OMDb API: Buscando página {page}...")
+        params = {"s": keyword, "type": "movie", "page": page, "apikey": API_KEY_OMDB}
+        response = requests.get(url, params=params)
         data = response.json()
-
+        
         if data.get("Response") == "True":
             for item in data["Search"]:
                 imdb_ids.append(item["imdbID"])
         else:
             break
-        
-        # Actualizar barra de progreso
-        progress_bar.progress(page / paginas)
-        time.sleep(0.5) # Reduje un poco el tiempo para que no sea tan lento
-
-    progress_bar.empty() # Limpiar barra al terminar
-    return list(set(imdb_ids)) 
-
-def obtener_detalle_peliculas(imdb_ids):
+        progress.progress(page * 50)
+    
+    # Obtenemos detalles
     registros = []
     total = len(imdb_ids)
     
-    if total == 0:
-        return pd.DataFrame()
-
-    status_text = st.empty() # Texto cambiante en pantalla
-    
     for i, imdb_id in enumerate(imdb_ids):
-        status_text.text(f"Descargando detalles: {i+1} de {total} películas...")
+        status.text(f"OMDb: Descargando detalles {i+1}/{total}...")
+        params_detail = {"i": imdb_id, "apikey": API_KEY_OMDB}
+        resp = requests.get(url, params=params_detail).json()
         
-        params = {
-            "i": imdb_id,
-            "apikey": API_KEY
-        }
-        response = requests.get(BASE_URL, params=params)
-        data = response.json()
-
-        if data.get("Response") == "True":
+        if resp.get("Response") == "True":
             registros.append({
-                "IMDb ID": data.get("imdbID"),
-                "Título": data.get("Title"),
-                "Año": data.get("Year"),
-                "Género": data.get("Genre"),
-                "Rating": data.get("imdbRating"),
-                "Poster": data.get("Poster") # Agregué el póster para que se vea mejor
+                "Fuente": "OMDb",
+                "Título": resp.get("Title"),
+                "Año": resp.get("Year"),
+                "Rating": resp.get("imdbRating"),
+                "Poster": resp.get("Poster")
             })
-        
-        # time.sleep(0.2) # Opcional: Pausa pequeña para no saturar
-
-    status_text.success("¡Datos descargados con éxito!")
+    
+    progress.empty()
+    status.empty()
     return pd.DataFrame(registros)
 
-# --- INTERFAZ DE USUARIO ---
+# ==========================================
+# 🕷️ LÓGICA 2: FilmAffinity (WEB SCRAPING)
+# ==========================================
+def buscar_filmaffinity(keyword):
+    # 1. URL de búsqueda de FilmAffinity
+    url_base = f"https://www.filmaffinity.com/es/search.php?stext={keyword}"
+    
+    # IMPORTANTE: FilmAffinity bloquea si no dices que eres un navegador
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
+    st.info(f"🕸️ Scrapeando: {url_base} ... esto puede tardar un poco más.")
+    
+    response = requests.get(url_base, headers=headers)
+    
+    if response.status_code != 200:
+        st.error("Error al conectar con FilmAffinity")
+        return pd.DataFrame()
 
-# 1. Input del usuario
-keyword = st.text_input("Ingresa la palabra clave (ej. Love, Batman, Star):")
-
-# 2. Botón de búsqueda
-if st.button("Buscar Películas"):
-    if keyword:
-        with st.spinner('Buscando IDs de películas...'):
-            ids = buscar_peliculas(keyword, paginas=2) # Puse 2 páginas para que sea rápido probar
-        
-        st.write(f"Se encontraron **{len(ids)}** películas. Obteniendo detalles...")
-        
-        df_api = obtener_detalle_peliculas(ids)
-
-        if not df_api.empty:
-            # MOSTRAR TABLA INTERACTIVA
-            st.dataframe(
-                df_api,
-                column_config={
-                    "Poster": st.column_config.ImageColumn("Póster"), # Muestra la imagen real
-                },
-                hide_index=True
-            )
+    # 2. Parsear el HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    registros = []
+    
+    # En FilmAffinity, cada resultado suele estar en un div con clase 'se-it' o 'movie-card'
+    # Buscamos los items de la lista de resultados
+    resultados = soup.find_all('div', class_='se-it')
+    
+    # Limitamos a 10 para no saturar, ya que el scraping es lento
+    for item in resultados[:10]: 
+        try:
+            # Título
+            titulo_tag = item.find('div', class_='mc-title')
+            titulo = titulo_tag.get_text(strip=True) if titulo_tag else "Sin título"
             
-            # Opción para descargar los resultados
-            csv = df_api.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Descargar resultados como CSV",
-                data=csv,
-                file_name=f'peliculas_{keyword}.csv',
-                mime='text/csv',
+            # Año
+            anio_tag = item.find('div', class_='ye-w')
+            anio = anio_tag.get_text(strip=True) if anio_tag else "-"
+            
+            # Poster (Imagen)
+            img_tag = item.find('img')
+            poster_url = img_tag['src'] if img_tag else None
+            
+            # Nota: El Rating a veces no sale en la búsqueda rápida de FA,
+            # pero intentamos sacarlo si está visible en la tarjeta
+            rating_tag = item.find('div', class_='avgrat-box')
+            rating = rating_tag.get_text(strip=True) if rating_tag else "N/A"
+
+            registros.append({
+                "Fuente": "FilmAffinity",
+                "Título": titulo,
+                "Año": anio,
+                "Rating": rating,
+                "Poster": poster_url
+            })
+            
+        except Exception as e:
+            continue # Si falla una peli, pasamos a la siguiente
+
+    return pd.DataFrame(registros)
+
+# ==========================================
+# 🎨 INTERFAZ GRÁFICA (FRONTEND)
+# ==========================================
+
+st.title("🎬 Buscador Universal de Películas")
+
+# 1. SELECTOR DE FUENTE (Lo nuevo que pediste)
+fuente = st.sidebar.radio(
+    "📍 ¿De dónde extraemos los datos?",
+    ("OMDb API (Rápido)", "FilmAffinity (Web Scraping)")
+)
+
+st.sidebar.markdown("---")
+st.sidebar.write("Nota: El scraping es más lento porque analiza el HTML real de la página.")
+
+# 2. INPUT DE BÚSQUEDA
+keyword = st.text_input("Escribe el nombre de la película:", placeholder="Ej. Matrix")
+
+if st.button("Buscar"):
+    if not keyword:
+        st.warning("Por favor escribe algo.")
+    else:
+        df_resultados = pd.DataFrame()
+        
+        # DECISIÓN: ¿Qué función ejecuto?
+        if "OMDb" in fuente:
+            with st.spinner('Consultando base de datos oficial...'):
+                df_resultados = buscar_omdb(keyword)
+        else:
+            with st.spinner('Scrapeando FilmAffinity en tiempo real...'):
+                df_resultados = buscar_filmaffinity(keyword)
+
+        # MOSTRAR RESULTADOS
+        if not df_resultados.empty:
+            st.success(f"Encontradas {len(df_resultados)} películas en {fuente}")
+            
+            st.dataframe(
+                df_resultados,
+                column_config={
+                    "Poster": st.column_config.ImageColumn("Póster", width="small")
+                },
+                hide_index=True,
+                use_container_width=True
             )
         else:
-            st.warning("No se encontraron resultados o hubo un error.")
-    else:
-        st.error("Por favor, escribe una palabra clave.")
+            st.error("No se encontraron resultados. Intenta otra palabra.")
