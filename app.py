@@ -1,176 +1,68 @@
-import streamlit as st
+from flask import Flask, render_template, request
 import pandas as pd
-import requests
-import cloudscraper
-from bs4 import BeautifulSoup
-import time
-import random
+import os
 
-# --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Buscador PRO", layout="wide", page_icon="🎬")
-API_KEY_OMDB = "69d810ef"
+app = Flask(__name__)
 
-# ==========================================
-# 🧠 LÓGICA 1: OMDb API
-# ==========================================
-def buscar_omdb(keyword):
-    url = "https://www.omdbapi.com/"
-    imdb_ids = []
-    registros = []
-    
-    for page in range(1, 3):
-        try:
-            params = {"s": keyword, "type": "movie", "page": page, "apikey": API_KEY_OMDB}
-            data = requests.get(url, params=params).json()
-            if data.get("Response") == "True":
-                for item in data["Search"]:
-                    imdb_ids.append(item["imdbID"])
-            else:
-                break
-        except:
-            break
+# Configuración del dataset
+DATASET_PATH = "dataset_final_peliculas.csv"
 
-    for imdb_id in imdb_ids:
-        try:
-            params = {"i": imdb_id, "apikey": API_KEY_OMDB}
-            item = requests.get(url, params=params).json()
-            if item.get("Response") == "True":
-                registros.append({
-                    "Título": item.get("Title"),
-                    "Año": item.get("Year"),
-                    "Rating": item.get("imdbRating"),
-                    "Poster": item.get("Poster"),
-                    "Fuente": "OMDb"
-                })
-        except:
-            continue     
-    return pd.DataFrame(registros)
-
-# ==========================================
-# 🕷️ LÓGICA 2: FilmAffinity (ACTUALIZADA AL HTML NUEVO)
-# ==========================================
-def buscar_filmaffinity(keyword):
-    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome','platform': 'windows','mobile': False})
-    # Usamos /pe/ para coincidir con tu HTML
-    url = "https://www.filmaffinity.com/pe/search.php"
+def cargar_datos():
+    if not os.path.exists(DATASET_PATH):
+        print(f"❌ Error: No se encontró {DATASET_PATH}")
+        return pd.DataFrame()
     
     try:
-        time.sleep(random.uniform(0.5, 1.0))
-        response = scraper.get(url, params={'stext': keyword})
+        df = pd.read_csv(DATASET_PATH)
+        # Limpieza y normalización de datos
+        df = df.fillna({
+            "budget": 0, 
+            "revenue": 0, 
+            "rating_imdb": 0,
+            "popularity": 0, 
+            "streaming_disponible": "No disponible"
+        })
         
-        if response.status_code != 200:
-            return pd.DataFrame()
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        registros = []
+        # Lógica de Negocio: Estado Financiero
+        def calcular_estado(row):
+            if row["budget"] > 0 and row["revenue"] > 0:
+                return "Éxito ✅" if row["revenue"] > row["budget"] else "Fracaso ❌"
+            return "Sin datos financieros ⚠️"
         
-        # 1. CAMBIO CLAVE: Buscamos 'movie-card' en lugar de 'se-it'
-        cards = soup.find_all('div', class_='movie-card')
-        
-        # Si no hay cartas, revisamos si es redirección única (título directo)
-        if not cards and soup.find('h1', {'id': 'main-title'}):
-            # Lógica simple para ficha única
-            t = soup.find('h1', {'id': 'main-title'}).get_text(strip=True)
-            registros.append({"Título": t, "Año": "Ficha", "Rating": "-", "Poster": None, "Fuente": "FilmAffinity"})
-            return pd.DataFrame(registros)
-
-        for card in cards[:15]:
-            try:
-                # --- EXTRACCIÓN BASADA EN TU HTML ---
-                
-                # TÍTULO: div class="mc-title" -> a
-                title_div = card.find('div', class_='mc-title')
-                titulo = title_div.a.get_text(strip=True) if title_div else "Sin Título"
-                
-                # AÑO: span class="mc-year"
-                year_span = card.find('span', class_='mc-year')
-                anio = year_span.get_text(strip=True) if year_span else "-"
-                
-                # RATING: div class="avg" (dentro de fa-avg-rat-box)
-                rat_div = card.find('div', class_='avg')
-                rating = rat_div.get_text(strip=True) if rat_div else "N/A"
-                
-                # POSTER: img class="lazyload", atributo data-srcset
-                img_tag = card.find('img')
-                poster = None
-                
-                if img_tag:
-                    # Tu HTML usa data-srcset="url 150w, url 300w, url 400w"
-                    if 'data-srcset' in img_tag.attrs:
-                        srcset = img_tag['data-srcset']
-                        # Dividimos por comas para separar las versiones
-                        urls = srcset.split(',')
-                        # Tomamos la última (suele ser la más grande) o la segunda
-                        # Limpiamos espacios y quitamos el indicador de tamaño " 300w"
-                        # Ejemplo: " https://pics...mmed.jpg 300w" -> split(' ') -> ["", "https://...", "300w"]
-                        
-                        # Intentamos buscar la versión "mmed" o "large"
-                        best_url = urls[-1].strip().split(' ')[0] # Coge la última (large)
-                        
-                        # Si prefieres la mediana (mmed) que indicaste:
-                        for u in urls:
-                            if "mmed.jpg" in u:
-                                best_url = u.strip().split(' ')[0]
-                                break
-                                
-                        poster = best_url
-                        
-                    elif 'src' in img_tag.attrs and "empty.gif" not in img_tag['src']:
-                        poster = img_tag['src']
-
-                registros.append({
-                    "Título": titulo,
-                    "Año": anio,
-                    "Rating": rating,
-                    "Poster": poster,
-                    "Fuente": "FilmAffinity"
-                })
-            except Exception as e:
-                # print(e) # Descomentar para depurar
-                continue
-                
-        return pd.DataFrame(registros)
-
+        df["estado_financiero"] = df.apply(calcular_estado, axis=1)
+        return df
     except Exception as e:
-        st.error(f"Error interno: {e}")
+        print(f"❌ Error al procesar el CSV: {e}")
         return pd.DataFrame()
 
-# ==========================================
-# 🎨 INTERFAZ GRÁFICA
-# ==========================================
-st.title("🎬 Buscador Universal")
+@app.route("/")
+def index():
+    df = cargar_datos()
+    if df.empty:
+        return "Error: No hay datos disponibles. Revisa el archivo CSV."
 
-col1, col2 = st.columns([1, 3])
-with col1:
-    fuente = st.radio("Fuente:", ["OMDb API", "FilmAffinity"])
-with col2:
-    keyword = st.text_input("Película a buscar:", placeholder="Ej. Star Wars")
+    # Capturar filtros de búsqueda
+    genero = request.args.get("genero", "").strip().lower()
+    
+    stats = {"total": 0, "promedio_rating": 0}
 
-if st.button("🔍 Buscar", type="primary"):
-    if not keyword:
-        st.warning("Escribe algo primero.")
-    else:
-        df = pd.DataFrame()
+    if genero:
+        # 1. Filtrar por género
+        df = df[df["genero"].str.lower().str.contains(genero, na=False)]
         
-        with st.spinner(f"Buscando en {fuente}..."):
-            if fuente == "OMDb API":
-                df = buscar_omdb(keyword)
-            else:
-                df = buscar_filmaffinity(keyword)
+        # 2. Ordenar por los mejores puntuados (Top 10)
+        df = df.sort_values(by=["rating_imdb", "popularity"], ascending=False).head(10)
         
+        # 3. Calcular estadísticas en tiempo real
         if not df.empty:
-            st.success(f"Encontrados {len(df)} resultados.")
-            
-            st.dataframe(
-                df,
-                column_config={
-                    "Poster": st.column_config.ImageColumn("Póster", width="small"),
-                    "Rating": st.column_config.TextColumn("Nota"),
-                    "Año": st.column_config.TextColumn("Año"),
-                },
-                use_container_width=True,
-                hide_index=True,
-                column_order=("Poster", "Título", "Año", "Rating", "Fuente")
-            )
-        else:
-            st.error("No se encontraron resultados o hubo un bloqueo.")
+            stats["total"] = len(df)
+            stats["promedio_rating"] = round(df["rating_imdb"].mean(), 1)
+    else:
+        # Si no hay búsqueda, mostramos las primeras 70
+        df = df.head(70)
+
+    peliculas = df.to_dict(orient="records")
+    return render_template("index.html", peliculas=peliculas, stats=stats, busqueda=genero)
+
+if __name__ == "__main__":
+    app.run(debug=True)
