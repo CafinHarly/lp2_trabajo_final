@@ -81,28 +81,51 @@ def cargar_datos():
     except Exception as e:
         print(f"Error cargando datos: {e}")
         return pd.DataFrame()
-    
+def obtener_generos_unicos(df):
+    """Extrae todos los géneros únicos del dataset para el menú."""
+    generos = set()
+    if "genero" in df.columns:
+        for item in df["genero"].dropna().astype(str):
+            # Separa por comas: "Action, Adventure" -> ["Action", "Adventure"]
+            partes = [g.strip() for g in item.split(",")]
+            generos.update(partes)
+    return sorted(list(generos))   
+
 @app.route("/")
 def index():
     df = cargar_datos()
-    genero = request.args.get("genero", "").strip().lower()
+    # Obtenemos la lista de géneros para el menú
+    lista_generos = obtener_generos_unicos(df)
+
+    # Obtenemos los filtros del usuario
+    busqueda_texto = request.args.get("q", "").strip().lower() # Input de texto
+    filtro_genero = request.args.get("filtro_genero", "").strip() # Dropdown
+
     stats = {"total": 0, "promedio_rating": 0}
 
-    if genero:
-        df = df[df["genero"].str.lower().str.contains(genero, na=False)]
-        df = df.sort_values(by=["rating_imdb"], ascending=False).head(10)
-        if not df.empty:
-            stats["total"] = len(df)
-            stats["promedio_rating"] = round(df["rating_imdb"].mean(), 1)
-    else:
-        df = df.head(70)
+    if not df.empty:
+        if filtro_genero:
+            df = df[df["genero"].astype(str).str.contains(filtro_genero, na=False)]
+
+        if busqueda_texto:
+            mask_genero = df["genero"].astype(str).str.lower().str.contains(busqueda_texto, na=False)
+            mask_titulo = df["titulo"].astype(str).str.lower().str.contains(busqueda_texto, na=False)
+            df = df[mask_genero | mask_titulo]
+        
+        df = df.sort_values(by="rating_imdb", ascending=False)
+        
+        stats["total"] = len(df)
+        stats["promedio_rating"] = round(df["rating_imdb"].mean(), 1)
+        
+        limit = 20 if (busqueda_texto or filtro_genero) else 70
+        df = df.head(limit)
 
     peliculas = df.to_dict(orient="records")
 
     # Agregamos la lista de objetos de plataformas
     for peli in peliculas:
         peli['obj_plataformas'] = procesar_plataformas(peli['plataformas'])
-    return render_template("index.html", peliculas=peliculas, stats=stats, busqueda=genero)
+    return render_template("index.html", peliculas=peliculas, stats=stats, busqueda=busqueda_texto, filtro_actual=filtro_genero, lista_generos=lista_generos)
 
 # Inicio de la aplicación
 if __name__ == "__main__":
