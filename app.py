@@ -4,33 +4,8 @@ import os
 
 app = Flask(__name__)
 
-DATASET_PATH = "dataset_final_peliculas.csv"
-
-LOGOS_URL = {
-    "Netflix": "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg",
-    "Amazon Prime Video": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Prime_Video.png",
-    "Disney Plus": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg",
-    "Max": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Max_logo.svg",
-    "HBO Max": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Max_logo.svg",
-    "Apple TV Plus": "https://upload.wikimedia.org/wikipedia/commons/2/28/Apple_TV_Plus_Logo.svg",
-    "Star Plus": "https://upload.wikimedia.org/wikipedia/commons/7/71/Star%2B_logo.svg",
-    "Paramount Plus": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg",
-    "Claro video": "https://upload.wikimedia.org/wikipedia/commons/4/43/Claro_video_logo.svg",
-    "MovistarTV": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Movistar_Play_logo.png"
-}
-def procesar_plataformas(texto_plataformas):
-    """
-    Convierte 'Netflix, Amazon' en una lista de objetos con url de logo.
-    """
-    if pd.isna(texto_plataformas) or texto_plataformas == "No disponible":
-        return []
-    lista_resultado = []
-    nombres = [p.strip() for p in str(texto_plataformas).split(",")]
-    for nombre in nombres:
-        logo = LOGOS_URL.get(nombre, "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Question_mark_%28black%29.svg/200px-Question_mark_%28black%29.svg.png")
-        lista_resultado.append({"nombre": nombre, "logo": logo})
-        
-    return lista_resultado
+# USA EL ARCHIVO QUE TIENE LOS DATOS INTEGRADOS
+DATASET_PATH = "datos_integrados_124.csv" 
 
 def cargar_datos():
     if not os.path.exists(DATASET_PATH):
@@ -38,56 +13,51 @@ def cargar_datos():
     try:
         df = pd.read_csv(DATASET_PATH)
         
-        # 1. FORZAMOS QUE LOS DATOS SEAN NÚMEROS (Esto arregla la rentabilidad vacía)
-        df["budget"] = pd.to_numeric(df["budget"], errors='coerce').fillna(0)
-        df["revenue"] = pd.to_numeric(df["revenue"], errors='coerce').fillna(0)
-        df["rating_imdb"] = pd.to_numeric(df["rating_imdb"], errors='coerce').fillna(0)
-        df["plataformas"] = df["plataformas"].fillna("No disponible")
-        df["poster_url"] = df["poster_url"].fillna("https://via.placeholder.com/300x450?text=Sin+Poster")
-
-        def calcular_estado(row):
-            presupuesto = row["budget"]
-            ganancia = row["revenue"]
-            diferencia = ganancia - presupuesto
+        # --- PROTECCIÓN CONTRA EL ERROR DE POPULARITY ---
+        if 'popularity' not in df.columns:
+            df['popularity'] = 0  # Si no existe, la crea con valor 0 para no fallar
             
-            def formato_moneda(valor):
-                return "${:,.0f}".format(valor)
+        # Aseguramos que rating_imdb y genero también existan
+        if 'rating_imdb' not in df.columns:
+            df['rating_imdb'] = 0
+        if 'genero' not in df.columns:
+            df['genero'] = "Unknown"
 
-            if presupuesto > 0 and ganancia > 0:
-                if diferencia > 0:
-                    return {
-                        "texto": "Éxito 💰", 
-                        "clase": "exito", 
-                        "monto": f"+ {formato_moneda(diferencia)}" 
-                    }
-                else:
-                    return {
-                        "texto": "Fracaso 📉", 
-                        "clase": "fracaso", 
-                        "monto": f"{formato_moneda(diferencia)}" 
-                    }
-            return {"texto": "Sin datos ⚠️", "clase": "neutro", "monto": ""}
+        df = df.fillna({
+            "budget": 0, "revenue": 0, "rating_imdb": 0,
+            "popularity": 0, "plataformas": "No disponible"
+        })
         
-        # Aplicamos la lógica
-        estados = df.apply(calcular_estado, axis=1)
-        df["estado_texto"] = estados.apply(lambda x: x["texto"])
-        df["estado_clase"] = estados.apply(lambda x: x["clase"])
-        df["estado_monto"] = estados.apply(lambda x: x["monto"]) 
-
+        # Lógica de rentabilidad
+        def calcular_estado(row):
+            presupuesto = pd.to_numeric(row.get("budget", 0), errors='coerce') or 0
+            ganancia = pd.to_numeric(row.get("revenue", 0), errors='coerce') or 0
+            if presupuesto > 0 and ganancia > 0:
+                return "Éxito ✅" if ganancia > presupuesto else "Fracaso ❌"
+            return "Sin datos financieros ⚠️"
+        
+        df["estado_financiero"] = df.apply(calcular_estado, axis=1)
         return df
     except Exception as e:
-        print(f"Error cargando datos: {e}")
+        print(f"Error cargando CSV: {e}")
         return pd.DataFrame()
-    
+
 @app.route("/")
 def index():
     df = cargar_datos()
+    if df.empty:
+        return "Error: No se pudo cargar el archivo CSV. Verifica el nombre en el repositorio."
+
     genero = request.args.get("genero", "").strip().lower()
     stats = {"total": 0, "promedio_rating": 0}
 
     if genero:
+        # Filtrado por género
         df = df[df["genero"].str.lower().str.contains(genero, na=False)]
+        
+        # Ordenar (Ya no fallará por 'popularity')
         df = df.sort_values(by=["rating_imdb", "popularity"], ascending=False).head(10)
+        
         if not df.empty:
             stats["total"] = len(df)
             stats["promedio_rating"] = round(df["rating_imdb"].mean(), 1)
@@ -95,13 +65,8 @@ def index():
         df = df.head(70)
 
     peliculas = df.to_dict(orient="records")
-
-    # Agregamos la lista de objetos de plataformas
-    for peli in peliculas:
-        peli['obj_plataformas'] = procesar_plataformas(peli['plataformas'])
     return render_template("index.html", peliculas=peliculas, stats=stats, busqueda=genero)
 
-# Inicio de la aplicación
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
