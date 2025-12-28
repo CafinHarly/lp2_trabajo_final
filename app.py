@@ -16,7 +16,10 @@ LOGOS_URL = {
     "Star Plus": "https://upload.wikimedia.org/wikipedia/commons/7/71/Star%2B_logo.svg",
     "Paramount Plus": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg",
     "Claro video": "https://upload.wikimedia.org/wikipedia/commons/4/43/Claro_video_logo.svg",
-    "MovistarTV": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Movistar_Play_logo.png"
+    "MovistarTV": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Movistar_Play_logo.png",
+    "Movistar Play": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Movistar_Play_logo.png",
+    "Google Play Movies": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Google_Play_Movies_%26_TV_logo.svg",
+    "YouTube": "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
 }
 def procesar_plataformas(texto_plataformas):
     """
@@ -87,7 +90,7 @@ def index():
 
     if genero:
         df = df[df["genero"].str.lower().str.contains(genero, na=False)]
-        df = df.sort_values(by=["rating_imdb", "popularity"], ascending=False).head(10)
+        df = df.sort_values(by=["rating_imdb"], ascending=False).head(10)
         if not df.empty:
             stats["total"] = len(df)
             stats["promedio_rating"] = round(df["rating_imdb"].mean(), 1)
