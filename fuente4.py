@@ -16,8 +16,17 @@ class Fuente4Media:
 
     def buscar_id(self, titulo):
         """Busca el ID de la película en TMDB"""
-        pass
-
+        url = f"{BASE_URL}/search/movie"
+        params = {'api_key': API_KEY, 'query': titulo, 'language': 'es-MX'}
+        try:
+            res = requests.get(url, params=params)
+            data = res.json()
+            if data['results']:
+                return data['results'][0]['id']
+        except Exception as e:
+            print(f"Error ID {titulo}: {e}")
+        return None
+    
     def obtener_streaming(self, movie_id):
         """Busca en qué plataformas está disponible"""
         pass
