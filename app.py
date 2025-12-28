@@ -37,20 +37,48 @@ def cargar_datos():
         return pd.DataFrame()
     try:
         df = pd.read_csv(DATASET_PATH)
-        df = df.fillna({
-            "budget": 0, "revenue": 0, "rating_imdb": 0,
-            "plataformas": "No disponible",
-            "poster_url": "https://via.placeholder.com/300x450?text=Sin+Poster"
-        })
-        def calcular_estado(row):
-            if row["budget"] > 0 and row["revenue"] > 0:
-                return "Éxito ✅" if row["revenue"] > row["budget"] else "Fracaso ❌"
-            return "Sin datos financieros ⚠️"
-        df["estado_financiero"] = df.apply(calcular_estado, axis=1)
-        return df
-    except:
-        return pd.DataFrame()
+        
+        # 1. FORZAMOS QUE LOS DATOS SEAN NÚMEROS (Esto arregla la rentabilidad vacía)
+        df["budget"] = pd.to_numeric(df["budget"], errors='coerce').fillna(0)
+        df["revenue"] = pd.to_numeric(df["revenue"], errors='coerce').fillna(0)
+        df["rating_imdb"] = pd.to_numeric(df["rating_imdb"], errors='coerce').fillna(0)
+        df["plataformas"] = df["plataformas"].fillna("No disponible")
+        df["poster_url"] = df["poster_url"].fillna("https://via.placeholder.com/300x450?text=Sin+Poster")
 
+        def calcular_estado(row):
+            presupuesto = row["budget"]
+            ganancia = row["revenue"]
+            diferencia = ganancia - presupuesto
+            
+            def formato_moneda(valor):
+                return "${:,.0f}".format(valor)
+
+            if presupuesto > 0 and ganancia > 0:
+                if diferencia > 0:
+                    return {
+                        "texto": "Éxito 💰", 
+                        "clase": "exito", 
+                        "monto": f"+ {formato_moneda(diferencia)}" 
+                    }
+                else:
+                    return {
+                        "texto": "Fracaso 📉", 
+                        "clase": "fracaso", 
+                        "monto": f"{formato_moneda(diferencia)}" 
+                    }
+            return {"texto": "Sin datos ⚠️", "clase": "neutro", "monto": ""}
+        
+        # Aplicamos la lógica
+        estados = df.apply(calcular_estado, axis=1)
+        df["estado_texto"] = estados.apply(lambda x: x["texto"])
+        df["estado_clase"] = estados.apply(lambda x: x["clase"])
+        df["estado_monto"] = estados.apply(lambda x: x["monto"]) 
+
+        return df
+    except Exception as e:
+        print(f"Error cargando datos: {e}")
+        return pd.DataFrame()
+    
 @app.route("/")
 def index():
     df = cargar_datos()
