@@ -46,8 +46,25 @@ class Fuente4Media:
         return "No disponible en streaming"
 
     def obtener_poster(self, movie_id):
-        """Descarga el póster de la película"""
-        pass
+        """Obtiene la URL absoluta del póster para usar en web"""
+        if not movie_id: return None
+        
+        url_api = f"{BASE_URL}/movie/{movie_id}"
+        try:
+            # Consultamos los detalles de la película
+            res = requests.get(url_api, params={'api_key': API_KEY})
+            data = res.json()
+            
+            poster_path = data.get('poster_path')
+            if poster_path:
+                # Concatenamos la URL base de imágenes de TMDB
+                # w500 es un buen tamaño para web (no muy pesado, buena calidad)
+                return f"{IMG_BASE_URL}{poster_path}"
+        except Exception as e:
+            print(f"Error obteniendo poster: {e}")
+            
+        # Si falla, podemos devolver una imagen por defecto o None
+        return "https://via.placeholder.com/300x450?text=No+Poster"
 
     def ejecutar(self):
         print("Proceso aún no implementado.")
