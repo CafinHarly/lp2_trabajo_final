@@ -12,19 +12,30 @@ PAIS = "PE"
 class Fuente4Media:
     def __init__(self, archivo_entrada):
         self.archivo_entrada = archivo_entrada
+        self.df_resultado = None
         print(f"--- Inicializando Fuente 4 para: {archivo_entrada} ---")
 
-    def buscar_id(self, titulo):
-        """Busca el ID de la película en TMDB"""
-        url = f"{BASE_URL}/search/movie"
-        params = {'api_key': API_KEY, 'query': titulo, 'language': 'es-MX'}
+    def buscar_id_por_imdb(self, imdb_id):
+        # Para unificar el id con una excepción para obtener su disponibilidad en streaming 
+        if pd.isna(imdb_id) or str(imdb_id).strip() == "":
+            return None
+
+        # Endpoint '/find/{id}' es específico para IDs externos
+        url = f"{BASE_URL}/find/{imdb_id}"
+        params = {
+            'api_key': API_KEY,
+            'external_source': 'imdb_id'
+        }
+        
         try:
             res = requests.get(url, params=params)
             data = res.json()
-            if data['results']:
-                return data['results'][0]['id']
+            
+            if data.get('movie_results'):
+                return data['movie_results'][0]['id']
         except Exception as e:
-            print(f"Error ID {titulo}: {e}")
+            print(f"[ERROR] Buscando ID para {imdb_id}: {e}")
+            
         return None
     
     def obtener_streaming(self, movie_id):
@@ -45,13 +56,12 @@ class Fuente4Media:
             pass
         return "No disponible en streaming"
 
-    def obtener_poster(self, movie_id):
+    def obtener_poster_url(self, movie_id):
         """Obtiene la URL absoluta del póster para usar en web"""
         if not movie_id: return None
         
         url_api = f"{BASE_URL}/movie/{movie_id}"
         try:
-            # Consultamos los detalles de la película
             res = requests.get(url_api, params={'api_key': API_KEY})
             data = res.json()
             
@@ -72,46 +82,44 @@ class Fuente4Media:
         except FileNotFoundError:
             print("[ERROR] No se encuentra el archivo de entrada.")
             return
-
-        col_titulo = 'titulo' 
         
         print(f"[INFO] Iniciando procesamiento de {len(df)} registros...")
-        print("-" * 50)
+        print("-" * 60)
 
-        nuevos_streaming = []
-        nuevas_urls_poster = []
+        col_streaming = []
+        col_posters = []
 
         for index, row in df.iterrows():
-            titulo = row[col_titulo]
+            id_externo = row['imdb_id']
+            # Usamos el título solo para mostrarlo en el log (si existe)
+            titulo_ref = row.get('titulo', 'Pelicula') 
             
-            # 1. Buscar ID
-            movie_id = self.buscar_id(titulo)
+            # 1. Obtener ID de TMDB
+            tmdb_id = self.buscar_id_por_imdb(id_externo)
 
-            # 2. Streaming
-            st_info = self.obtener_streaming(movie_id)
-            nuevos_streaming.append(st_info)
-
-            # 3. Poster (URL)
-            url_poster = self.obtener_poster(movie_id)
-            nuevas_urls_poster.append(url_poster)
-        
-            estado_poster = "OK" if url_poster else "N/A"
-            print(f"[{index+1}/{len(df)}] {titulo} | Prov: {st_info} | Img: {estado_poster}")
+            # 2. Obtener datos usando ese ID
+            st_info = self.obtener_streaming(tmdb_id)
+            url_img = self.obtener_poster_url(tmdb_id)
             
-            time.sleep(0.1)
+            col_streaming.append(st_info)
+            col_posters.append(url_img)
+            
+            estado_img = "OK" if "http" in str(url_img) else "Falta"
+            print(f"[{index+1}/{len(df)}] {id_externo} | Stream: {st_info[:15]}... | Poster: {estado_img}")
+            
+            time.sleep(0.1) 
 
         self.df_resultado = df
-        self.df_resultado['plataformas'] = nuevos_streaming
-        self.df_resultado['poster_url'] = nuevas_urls_poster
+        self.df_resultado['plataformas'] = col_streaming
+        self.df_resultado['poster_url'] = col_posters
         
-        print("-" * 50)
+        print("-" * 60)
         print("[OK] Procesamiento en memoria finalizado.")
-        
-        # Llamamos al guardado
+
         self.guardar_resultados()
         
     def guardar_resultados(self):
-        nombre_salida = "dataset_final_app.csv"
+        nombre_salida = "datos_integrados_124.csv"
         try:
             self.df_resultado.to_csv(nombre_salida, index=False)
             print(f"[INFO] Archivo generado exitosamente: {nombre_salida}")
@@ -119,6 +127,5 @@ class Fuente4Media:
             print(f"[ERROR] Fallo al guardar archivo: {e}")
 
 if __name__ == "__main__":
-    # Prueba
-    app = Fuente4Media("datos_integrados_f1_f2.csv")
+    app = Fuente4Media("datos_integrados_f1_f2.csv") 
     app.ejecutar()
