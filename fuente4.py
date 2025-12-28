@@ -57,8 +57,6 @@ class Fuente4Media:
             
             poster_path = data.get('poster_path')
             if poster_path:
-                # Concatenamos la URL base de imágenes de TMDB
-                # w500 es un buen tamaño para web (no muy pesado, buena calidad)
                 return f"{IMG_BASE_URL}{poster_path}"
         except Exception as e:
             print(f"Error obteniendo poster: {e}")
@@ -67,7 +65,50 @@ class Fuente4Media:
         return "https://via.placeholder.com/300x450?text=No+Poster"
 
     def ejecutar(self):
-        print("Proceso aún no implementado.")
+        print(f"[INFO] Cargando dataset: {self.archivo_entrada}...")
+        
+        try:
+            df = pd.read_csv(self.archivo_entrada)
+        except FileNotFoundError:
+            print("[ERROR] No se encuentra el archivo de entrada.")
+            return
+
+        col_titulo = 'titulo' 
+        
+        print(f"[INFO] Iniciando procesamiento de {len(df)} registros...")
+        print("-" * 50)
+
+        nuevos_streaming = []
+        nuevas_urls_poster = []
+
+        for index, row in df.iterrows():
+            titulo = row[col_titulo]
+            
+            # 1. Buscar ID
+            movie_id = self.buscar_id(titulo)
+
+            # 2. Streaming
+            st_info = self.obtener_streaming(movie_id)
+            nuevos_streaming.append(st_info)
+
+            # 3. Poster (URL)
+            url_poster = self.obtener_poster(movie_id)
+            nuevas_urls_poster.append(url_poster)
+        
+            estado_poster = "OK" if url_poster else "N/A"
+            print(f"[{index+1}/{len(df)}] {titulo} | Prov: {st_info} | Img: {estado_poster}")
+            
+            time.sleep(0.1)
+
+        self.df_resultado = df
+        self.df_resultado['plataformas'] = nuevos_streaming
+        self.df_resultado['poster_url'] = nuevas_urls_poster
+        
+        print("-" * 50)
+        print("[OK] Procesamiento en memoria finalizado.")
+        
+        # Llamamos al guardado
+        self.guardar_resultados()
 
 if __name__ == "__main__":
     # Prueba
