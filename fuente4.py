@@ -109,6 +109,14 @@ class Fuente4Media:
         
         # Llamamos al guardado
         self.guardar_resultados()
+        
+    def guardar_resultados(self):
+        nombre_salida = "dataset_final_app.csv"
+        try:
+            self.df_resultado.to_csv(nombre_salida, index=False)
+            print(f"[INFO] Archivo generado exitosamente: {nombre_salida}")
+        except Exception as e:
+            print(f"[ERROR] Fallo al guardar archivo: {e}")
 
 if __name__ == "__main__":
     # Prueba
