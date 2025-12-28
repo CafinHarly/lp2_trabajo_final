@@ -27,7 +27,7 @@ def ejecutar_integracion():
     # 4. Unión (Merge)
     df_final = pd.merge(
         df_f1_f2_f4, 
-        df_f3[['key', 'budget', 'revenue', 'popularity']], 
+        df_f3[['key', 'budget', 'revenue']], 
         on='key', 
         how='left'
     )
