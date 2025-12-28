@@ -29,7 +29,21 @@ class Fuente4Media:
     
     def obtener_streaming(self, movie_id):
         """Busca en qué plataformas está disponible"""
-        pass
+        if not movie_id: return "Sin ID"
+        
+        url = f"{BASE_URL}/movie/{movie_id}/watch/providers"
+        params = {'api_key': API_KEY}
+        try:
+            res = requests.get(url, params=params)
+            data = res.json()
+            if 'results' in data and PAIS in data['results']:
+                flatrate = data['results'][PAIS].get('flatrate')
+                if flatrate:
+                    nombres = [p['provider_name'] for p in flatrate]
+                    return ", ".join(nombres)
+        except:
+            pass
+        return "No disponible en streaming"
 
     def obtener_poster(self, movie_id):
         """Descarga el póster de la película"""
