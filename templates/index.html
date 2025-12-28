@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PopCornDB - Fabricio Rodrigo</title>
+    <title>PopCornDB - Fabricio Rodrigo, Raul Anton Y Harley Puma</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -63,6 +63,8 @@
             border-radius: 20px;
             transition: transform 0.3s ease, border-color 0.3s;
             position: relative;
+            overflow: hidden; 
+            padding: 0 !important;
         }
 
         .movie-card:hover {
@@ -85,10 +87,6 @@
             z-index: 10;
         }
 
-        /* Popularidad Corregida */
-        .pop-label { color: #ffffff; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-        .pop-value { color: var(--cyan); font-weight: 900; font-size: 1.1rem; }
-
         .winner-border { border: 2px solid var(--gold) !important; }
 
         .roi-success { color: #2ecc71; }
@@ -96,6 +94,27 @@
 
         .btn-clear { color: #666; text-decoration: none; font-size: 1.2rem; padding: 0 15px; }
         .btn-clear:hover { color: var(--accent-red); }
+        
+        .movie-card { overflow: hidden; padding: 0 !important; } 
+
+        .movie-poster {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-bottom: 1px solid #222;
+        }
+
+        .card-body-custom { padding: 1.5rem; display: flex; flex-direction: column; height: 100%; }
+
+        .stream-logo {
+            width: 30px; height: 30px;
+            border-radius: 6px; margin-right: 4px;
+            border: 1px solid #444; background: #fff; padding: 2px;
+        }
+
+        .exito { color: #2ecc71; }
+        .fracaso { color: #e74c3c; }
+        .neutro { color: #95a5a6; }
     </style>
 </head>
 <body>
@@ -138,42 +157,119 @@
     <div class="row row-cols-1 row-cols-md-3 g-4">
         {% for p in peliculas %}
         <div class="col">
-            <div class="card movie-card h-100 p-4 shadow {% if loop.index == 1 and busqueda %} winner-border {% endif %}">
+            <div class="card movie-card h-100 shadow {% if loop.index == 1 and busqueda %} winner-border {% endif %}">
                 
                 <div class="top-badge shadow">
-                    {% if loop.index == 1 and busqueda %} 🏆 #1 RANKING {% else %} #{{ loop.index }} {% endif %}
+                    {% if loop.index == 1 and busqueda %} 🏆 #1 {% else %} #{{ loop.index }} {% endif %}
                 </div>
 
-                <div class="d-flex justify-content-between mb-3">
-                    <span class="rating-pill">⭐ {{ p.rating_imdb }}</span>
-                    <span class="text-muted small fw-bold">{{ p.anio }}</span>
+                <div class="rating-badge" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: #f5c518; padding: 5px 10px; border-radius: 8px; font-weight: 900; backdrop-filter: blur(5px); z-index: 5;">
+                    ⭐ {{ p.rating_imdb }}
                 </div>
 
-                <h4 class="fw-bold mb-1 {% if loop.index == 1 and busqueda %} titulo-top {% else %} titulo-normal {% endif %}">
-                    {{ p.titulo }}
-                </h4>
+                <img src="{{ p.poster_url }}" class="movie-poster" alt="Poster de {{ p.titulo }}" onerror="this.src='https://via.placeholder.com/300x450?text=Sin+Imagen'">
+
+                <div class="card-body-custom">
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small fw-bold">{{ p.anio }}</span>
+                    </div>
+
+                    <h5 class="fw-bold mb-1 {% if loop.index == 1 and busqueda %} titulo-top {% else %} titulo-normal {% endif %}">
+                        {{ p.titulo }}
+                    </h5>
+                    
+                    <p class="text-danger small fw-bold mb-3 text-uppercase">{{ p.genero }}</p>
+
+                    <div class="mt-auto">
+                        <div class="mb-3">
+                            <div class="small fw-bold mb-2 text-secondary" style="font-size: 0.7rem;">DISPONIBLE EN:</div>
+                            {% if p.obj_plataformas %}
+                                {% for plat in p.obj_plataformas %}
+                                    <img src="{{ plat.logo }}" title="{{ plat.nombre }}" class="stream-logo" alt="{{ plat.nombre }}">
+                                {% endfor %}
+                            {% else %}
+                                <span class="small text-muted">No disponible</span>
+                            {% endif %}
+                        </div>
+
+                        <hr style="border-color: #333; opacity: 1;">
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-secondary">Rentabilidad:</span>
+                            <span class="small fw-bold {{ p.estado_clase }}">
+                                {{ p.estado_texto }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+</div>
+</div> </div> </div> {% endfor %}  </div> </div> ```
+
+---
+
+### Opción 2: Reemplazo limpio del bloque completo
+
+Si tienes dudas de dónde ponerlo o si borraste algún `div` extra, aquí tienes el bloque **COMPLETO** de la grilla de películas.
+
+Busca la línea que dice `<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">`.
+Borra **todo** lo que haya dentro de ese `div` hasta su cierre y pega esto:
+
+```html
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+        {% for p in peliculas %}
+        <div class="col">
+            <div class="card movie-card h-100 shadow {% if loop.index == 1 and busqueda %} winner-border {% endif %}">
                 
-                <p class="text-danger small fw-bold mb-4 text-uppercase">{{ p.genero }}</p>
+                <div class="top-badge shadow">
+                    {% if loop.index == 1 and busqueda %} 🏆 #1 {% else %} #{{ loop.index }} {% endif %}
+                </div>
 
-                <div class="mt-auto">
-                    <div class="small fw-bold mb-3" style="color: var(--cyan);">📺 {{ p.streaming_disponible }}</div>
-                    <hr style="border-color: #333; opacity: 1;">
-                    <div class="d-flex justify-content-between align-items-end">
-                        <span class="small fw-bold {% if 'Éxito' in p.estado_financiero %} roi-success {% elif 'Fracaso' in p.estado_financiero %} roi-fail {% else %} text-muted {% endif %}">
-                            {{ p.estado_financiero }}
-                        </span>
-                        <div class="text-end">
-                            <div class="pop-label">POPULARIDAD</div>
-                            <div class="pop-value">{{ p.popularity|round(1) }}</div>
+                <div class="rating-badge" style="position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); color: #f5c518; padding: 5px 10px; border-radius: 8px; font-weight: 900; backdrop-filter: blur(5px); z-index: 5;">
+                    ⭐ {{ p.rating_imdb }}
+                </div>
+
+                <img src="{{ p.poster_url }}" class="movie-poster" alt="Poster de {{ p.titulo }}" onerror="this.src='https://via.placeholder.com/300x450?text=Sin+Imagen'">
+
+                <div class="card-body-custom">
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small fw-bold">{{ p.anio }}</span>
+                    </div>
+
+                    <h5 class="fw-bold mb-1 {% if loop.index == 1 and busqueda %} titulo-top {% else %} titulo-normal {% endif %}">
+                        {{ p.titulo }}
+                    </h5>
+                    
+                    <p class="text-danger small fw-bold mb-3 text-uppercase">{{ p.genero }}</p>
+
+                    <div class="mt-auto">
+                        <div class="mb-3">
+                            <div class="small fw-bold mb-2 text-secondary" style="font-size: 0.7rem;">DISPONIBLE EN:</div>
+                            {% if p.obj_plataformas %}
+                                {% for plat in p.obj_plataformas %}
+                                    <img src="{{ plat.logo }}" title="{{ plat.nombre }}" class="stream-logo" alt="{{ plat.nombre }}">
+                                {% endfor %}
+                            {% else %}
+                                <span class="small text-muted">No disponible</span>
+                            {% endif %}
+                        </div>
+
+                        <hr style="border-color: #333; opacity: 1;">
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-secondary">Rentabilidad:</span>
+                            <span class="small fw-bold {{ p.estado_clase }}">
+                                {{ p.estado_texto }}
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        {% endfor %}
-    </div>
-</div>
-
+        {% endfor %} </div>
 <footer class="text-center py-5 mt-5 border-top border-secondary">
     <p class="text-muted small fw-bold">Fabricio Rodrigo · Integración de Datos · 2024</p>
 </footer>
