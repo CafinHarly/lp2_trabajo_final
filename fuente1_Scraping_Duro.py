@@ -67,6 +67,5 @@ if __name__ == "__main__":
     driver.quit()
 
     # Guardar integración Fuente 1 + Fuente 2
-    df["streaming_disponible"] = resultados
     df.to_csv("datos_integrados_f1_f2.csv", index=False)
     print("\n✅ Archivo 'datos_integrados_f1_f2.csv' generado con éxito.")
