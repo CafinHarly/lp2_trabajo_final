@@ -1,5 +1,5 @@
 # Trabajo final de Lenguaje de Programación 2
-> [!NOTA]
+> [!NOTE]
 > Todo lo implementado se ha desarrollado respetando las directivas del archivo robots.txt y los términos de servicio de las fuentes consultadas. Se implementaron tiempos de espera (delays) entre peticiones para evitar la saturación de los servidores externos.
 
 <p align="center">
