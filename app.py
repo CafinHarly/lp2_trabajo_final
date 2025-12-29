@@ -15,24 +15,33 @@ LOGOS_URL = {
     "Apple TV Plus": "https://upload.wikimedia.org/wikipedia/commons/2/28/Apple_TV_Plus_Logo.svg",
     "Star Plus": "https://upload.wikimedia.org/wikipedia/commons/7/71/Star%2B_logo.svg",
     "Paramount Plus": "https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg",
-    "Claro video": "https://upload.wikimedia.org/wikipedia/commons/4/43/Claro_video_logo.svg",
+    "Claro video": "https://iconlogovector.com/uploads/images/2024/09/lg-66dc4e9a0be2b-Claro-video.webp",
     "MovistarTV": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Movistar_Play_logo.png",
     "Movistar Play": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Movistar_Play_logo.png",
     "Google Play Movies": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Google_Play_Movies_%26_TV_logo.svg",
-    "YouTube": "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
+    "YouTube": "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg",
+    "DIRECTV GO" : "https://logodownload.org/wp-content/uploads/2021/04/dgo-logo-0.png"
 }
 def procesar_plataformas(texto_plataformas):
     """
     Convierte 'Netflix, Amazon' en una lista de objetos con url de logo.
     """
-    if pd.isna(texto_plataformas) or texto_plataformas == "No disponible":
+    # Si es nulo o dice "No disponible", devolvemos lista vacía
+    if pd.isna(texto_plataformas) or str(texto_plataformas).strip() in ["No disponible", ""]:
         return []
+        
     lista_resultado = []
     nombres = [p.strip() for p in str(texto_plataformas).split(",")]
+    
     for nombre in nombres:
-        logo = LOGOS_URL.get(nombre, "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Question_mark_%28black%29.svg/200px-Question_mark_%28black%29.svg.png")
-        lista_resultado.append({"nombre": nombre, "logo": logo})
-        
+        # BUSCAMOS SOLO SI EXISTE EN EL DICCIONARIO
+        if nombre in LOGOS_URL:
+            lista_resultado.append({
+                "nombre": nombre, 
+                "logo": LOGOS_URL[nombre]
+            })
+        # Si no está en el diccionario, no hacemos nada (evitamos el signo de ?)
+            
     return lista_resultado
 
 def cargar_datos():
