@@ -1,5 +1,5 @@
 # Trabajo final de Lenguaje de Programación 2
-> [!NOTE]
+> [!NOTA]
 > Todo lo implementado se ha desarrollado respetando las directivas del archivo robots.txt y los términos de servicio de las fuentes consultadas. Se implementaron tiempos de espera (delays) entre peticiones para evitar la saturación de los servidores externos.
 
 <p align="center">
@@ -12,6 +12,8 @@
 Este proyecto es un ecosistema de datos diseñado para centralizar información cinematográfica proveniente de múltiples orígenes, permitiendo analizar la rentabilidad y disponibilidad de películas en servicios de streaming. El sistema automatiza todo el proceso, desde la extracción masiva de datos hasta su visualización en una plataforma web interactiva.
 
 El objetivo principal de este proyecto es consolidar datos de APIs, Web Scraping y Datasets estáticos para ofrecer una visión 360° de la industria del cine, enfocándose en la relación entre el éxito financiero y la presencia en plataformas digitales.
+
+Para leer la documentación completa consulte la [Wiki](https://github.com/CafinHarly/lp2_trabajo_final/wiki)
 
 ----
 
@@ -41,3 +43,4 @@ El proyecto se divide en tres fases críticas:
 
 -Python 3.x
 -Librerias:Pandas, `Requests`, ``selenium``, ``flask``, ``beautifulsoup4`` y ``kagglehub``
+
