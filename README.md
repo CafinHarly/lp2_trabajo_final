@@ -19,13 +19,25 @@ El objetivo principal de este proyecto es consolidar datos de APIs, Web Scraping
 
 El proyecto se divide en tres fases críticas:
 
-## Extracción de los datos
+## 1. Extracción de los datos
 
 - **JustWatch** ([fuente1.py](fuente1_Scraping_Duro.py)) : Realiza una búsqueda automatizada en JustWatch para identificar en qué plataformas (Netflix, Amazon, etc.) está disponible cada título.
 - **API OMDb** ([fuente2.py](fuente2.py)): Actúa como el punto de entrada, extrayendo metadatos básicos (títulos, años, calificaciones) para una selección inicial de películas.
 - **Kaggle Dataset** ([fuente3.py](FuenteN3.py)) : Descarga y limpia un dataset masivo de metadatos históricos para obtener cifras precisas de presupuesto y recaudación.
 - **API TMDB** ([fuente4.py](fuente4.py)) : Enriquece la base de datos obteniendo las URLs oficiales de los pósters y validando la disponibilidad de streaming específicamente para la región de Perú.
 
-## Integración y limpieza
+## 2. Integración y limpieza
 
-- **Motor de integración** ([integrador.py](integrador.py) :
+- **Motor de integración** ([integrador.py](integrador.py)):Consolida la información de todas las fuentes anteriores mediante una "llave" de unión basada en títulos normalizados.
+- **Tratamiento de datos** El sistema elimina duplicados, maneja valores nulos y prepara las métricas financieras para el análisis final.
+
+## 3. Visualización web
+
+- **Dashboard Interactivo** ([app.py](app.py)) : Una aplicación Flask que permite al usuario explorar el catálogo final.
+- **Lógica de Rentabilidad** : La interfaz calcula automáticamente si una película fue un "Éxito" o "Fracaso" comparando sus ingresos contra su presupuesto.
+- **Filtros inteligentes** : Permite realizar búsquedas por texto y filtrar por géneros cinematográficos en tiempo real.
+
+## 4. Requisitos
+
+-Python 3.x
+-Librerias:Pandas, `Requests`, ``selenium``, ``flask``, ``beautifulsoup4`` y ``kagglehub``
