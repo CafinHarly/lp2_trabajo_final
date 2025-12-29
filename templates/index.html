@@ -113,6 +113,28 @@
         .exito { color: #2ecc71; }
         .fracaso { color: #e74c3c; }
         .neutro { color: #95a5a6; }
+
+        .search-container {
+            display: flex;
+            gap: 10px; /* Espacio entre el menú y la caja de texto */
+            align-items: center;
+        }
+
+        .search-select {
+            background-color: #000;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 30px;
+            padding: 0 15px;
+            height: 45px; /* Misma altura que el input */
+            max-width: 200px; /* Que no sea muy ancho */
+            cursor: pointer;
+        }
+        
+        .btn-clear { 
+            color: #666; text-decoration: none; font-size: 1.2rem; padding: 0 10px; 
+        }
+        .btn-clear:hover { color: var(--accent-red); }
     </style>
 </head>
 <body>
@@ -123,13 +145,27 @@
         <h1 class="display-3 fw-black mb-4">PopCorn<span class="text-danger">DB</span></h1>
         
         <div class="row justify-content-center">
-            <div class="col-md-7">
-                <form action="/" method="GET" class="search-container d-flex align-items-center">
-                    <input type="text" name="genero" class="search-bar" placeholder="Buscar género (Action, Drama, Sci-Fi...)" value="{{ busqueda }}">
-                    {% if busqueda %} <a href="/" class="btn-clear">✕</a> {% endif %}
-                    <button type="submit" class="btn btn-danger rounded-pill px-5 fw-bold shadow">ANALIZAR</button>
+            <div class="col-md-9">
+              <form action="/" method="GET" class="search-container">
+                    
+                    <select name="filtro_genero" class="form-select search-select">
+                        <option value="">Todos los géneros</option>
+                        {% for genero in lista_generos %}
+                            <option value="{{ genero }}" {% if filtro_actual == genero %}selected{% endif %}>
+                                {{ genero }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    <input type="text" name="q" class="search-bar" placeholder="Título o palabra clave..." value="{{ busqueda }}">
+                    
+                    {% if busqueda or filtro_actual %} 
+                        <a href="/" class="btn-clear" style="text-decoration: none; color: #666; font-size: 1.2rem; padding: 0 10px;">✕</a> 
+                    {% endif %}
+                    
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow">ANALIZAR</button>
                 </form>
-            </div>
+            </div>  
         </div>
     </div>
 </div>
