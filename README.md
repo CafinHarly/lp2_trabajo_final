@@ -1,10 +1,10 @@
 # Trabajo final de Lenguaje de Programación 2
-> [!IMPORTANT]
+> [!NOTE]
 > Todo lo implementado se ha desarrollado respetando las directivas del archivo robots.txt y los términos de servicio de las fuentes consultadas. Se implementaron tiempos de espera (delays) entre peticiones para evitar la saturación de los servidores externos.
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/CafinHarly/lp2_trabajo_final/refs/heads/main/images/popcorndb_logo_dark.png#gh-dark-mode-only" width="380">
-    <img src="https://raw.githubusercontent.com/CafinHarly/lp2_trabajo_final/refs/heads/main/images/popcorndb_logo_light.png#gh-light-mode-only" width="380">
+    <img src="images/popcorndb_logo_dark.png#gh-dark-mode-only" width="380">
+    <img src="images/popcorndb_logo_light.png#gh-light-mode-only" width="380">
 </p>
 
 ----
@@ -21,5 +21,11 @@ El proyecto se divide en tres fases críticas:
 
 ## Extracción de los datos
 
-- **JustWatch** ([fuente1.py](https://github.com/CafinHarly/lp2_trabajo_final/blob/main/fuente1_Scraping_Duro.py)) : Realiza una búsqueda automatizada en JustWatch para identificar en qué plataformas (Netflix, Amazon, etc.) está disponible cada título.
-- **API OMDb** ([fuente2.py](https://github.com/CafinHarly/lp2_trabajo_final/blob/main/fuente2.py)): Actúa como el punto de entrada, extrayendo metadatos básicos (títulos, años, calificaciones) para una selección inicial de películas.
+- **JustWatch** ([fuente1.py](fuente1_Scraping_Duro.py)) : Realiza una búsqueda automatizada en JustWatch para identificar en qué plataformas (Netflix, Amazon, etc.) está disponible cada título.
+- **API OMDb** ([fuente2.py](fuente2.py)): Actúa como el punto de entrada, extrayendo metadatos básicos (títulos, años, calificaciones) para una selección inicial de películas.
+- **Kaggle Dataset** ([fuente3.py](FuenteN3.py)) : Descarga y limpia un dataset masivo de metadatos históricos para obtener cifras precisas de presupuesto y recaudación.
+- **API TMDB** ([fuente4.py](fuente4.py)) : Enriquece la base de datos obteniendo las URLs oficiales de los pósters y validando la disponibilidad de streaming específicamente para la región de Perú.
+
+## Integración y limpieza
+
+- **Motor de integración** ([integrador.py](integrador.py) :
