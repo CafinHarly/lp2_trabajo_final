@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import time
 
-API_KEY = "69d810ef"
+API_KEY = "74d67aec"
 BASE_URL = "https://www.omdbapi.com/"
 
 KEYWORDS_GENERALES = [
