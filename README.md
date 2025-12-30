@@ -41,6 +41,11 @@ El proyecto se divide en tres fases críticas:
 
 ## 4. Requisitos
 
--Python 3.x
--Librerias:Pandas, `Requests`, ``selenium``, ``flask``, ``beautifulsoup4`` y ``kagglehub``
+- Python 3.x
+- Librerias: `Pandas`, `Requests`, ``selenium``, ``flask``, ``beautifulsoup4`` y ``kagglehub``
 
+| Nombre | Usuario de GitHub |
+|--------|--------------------|
+| Fabricio Barrientos | [@fabriciobarrientos26](https://github.com/fabriciobarrientos26) |
+| Harley Puma | [@CafinHarly](https://github.com/CafinHarly) |
+| Raul Anton | [@RaulAM22](https://github.com/RaulAM22) |
