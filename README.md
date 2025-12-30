@@ -7,15 +7,13 @@
     <img src="images/popcorndb_logo_light.png#gh-light-mode-only" width="380">
 </p>
 
-----
-https://lp2-trabajo-final-pagina-web.onrender.com/  
-
+----  
 Este proyecto es un ecosistema de datos diseñado para centralizar información cinematográfica proveniente de múltiples orígenes, permitiendo analizar la rentabilidad y disponibilidad de películas en servicios de streaming. El sistema automatiza todo el proceso, desde la extracción masiva de datos hasta su visualización en una plataforma web interactiva.
 
 El objetivo principal de este proyecto es consolidar datos de APIs, Web Scraping y Datasets estáticos para ofrecer una visión 360° de la industria del cine, enfocándose en la relación entre el éxito financiero y la presencia en plataformas digitales.
 
 Para leer la documentación completa consulte la [Wiki](https://github.com/CafinHarly/lp2_trabajo_final/wiki)
-
+Para la página web ingrese [aqui](https://lp2-trabajo-final-pagina-web.onrender.com/)
 ----
 
 # Estructura del proyecto
