@@ -44,6 +44,8 @@ El proyecto se divide en tres fases críticas:
 - Python 3.x
 - Librerias: `Pandas`, `Requests`, ``selenium``, ``flask``, ``beautifulsoup4`` y ``kagglehub``
 
+## 5. Integrantes
+
 | Nombre | Usuario de GitHub |
 |--------|--------------------|
 | Fabricio Barrientos | [@fabriciobarrientos26](https://github.com/fabriciobarrientos26) |
