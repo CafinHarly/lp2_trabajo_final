@@ -8,7 +8,7 @@
 </p>
 
 ----
-
+https://lp2-trabajo-final-pagina-web.onrender.com/
 Este proyecto es un ecosistema de datos diseñado para centralizar información cinematográfica proveniente de múltiples orígenes, permitiendo analizar la rentabilidad y disponibilidad de películas en servicios de streaming. El sistema automatiza todo el proceso, desde la extracción masiva de datos hasta su visualización en una plataforma web interactiva.
 
 El objetivo principal de este proyecto es consolidar datos de APIs, Web Scraping y Datasets estáticos para ofrecer una visión 360° de la industria del cine, enfocándose en la relación entre el éxito financiero y la presencia en plataformas digitales.
