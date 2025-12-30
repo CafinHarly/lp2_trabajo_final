@@ -12,8 +12,9 @@ Este proyecto es un ecosistema de datos diseñado para centralizar información 
 
 El objetivo principal de este proyecto es consolidar datos de APIs, Web Scraping y Datasets estáticos para ofrecer una visión 360° de la industria del cine, enfocándose en la relación entre el éxito financiero y la presencia en plataformas digitales.
 
-Para leer la documentación completa consulte la [Wiki](https://github.com/CafinHarly/lp2_trabajo_final/wiki)
+Para leer la documentación completa consulte la [Wiki](https://github.com/CafinHarly/lp2_trabajo_final/wiki)  
 Para la página web ingrese [aqui](https://lp2-trabajo-final-pagina-web.onrender.com/)
+
 ----
 
 # Estructura del proyecto
